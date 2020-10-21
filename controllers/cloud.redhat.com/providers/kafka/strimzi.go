@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"fmt"
+	"strconv"
 
 	crd "cloud.redhat.com/clowder/v2/apis/cloud.redhat.com/v1alpha1"
 	strimzi "cloud.redhat.com/clowder/v2/apis/kafka.strimzi.io/v1beta1"
@@ -69,7 +70,7 @@ func NewStrimzi(p *p.Provider) (KafkaProvider, error) {
 	return kafkaProvider, kafkaProvider.configureBrokers()
 }
 
-func (s *strimziProvider) CreateTopic(nn types.NamespacedName, topic *strimzi.KafkaTopicSpec) error {
+func (s *strimziProvider) CreateTopic(nn types.NamespacedName, topic *strimzi.KafkaTopicSpec, app *crd.ClowdApp) error {
 	s.Config.Topics = []config.TopicConfig{}
 
 	appList := crd.ClowdAppList{}
@@ -79,14 +80,14 @@ func (s *strimziProvider) CreateTopic(nn types.NamespacedName, topic *strimzi.Ka
 		return errors.Wrap("Topic creation failed: Error listing apps", err)
 	}
 
-	kRes := strimzi.KafkaTopic{}
+	k := strimzi.KafkaTopic{}
 
 	topicName := fmt.Sprintf("%s-%s-%s", topic.TopicName, s.Env.Name, nn.Namespace)
 
 	update, err := utils.UpdateOrErr(s.Client.Get(s.Ctx, types.NamespacedName{
 		Namespace: s.Env.Spec.Providers.Kafka.Namespace,
 		Name:      topicName,
-	}, &kRes))
+	}, &k))
 
 	if err != nil {
 		return err
@@ -99,31 +100,60 @@ func (s *strimziProvider) CreateTopic(nn types.NamespacedName, topic *strimzi.Ka
 		// unique? can we use for delete selector?
 	}
 
-	kRes.SetName(topicName)
-	kRes.SetNamespace(s.Env.Spec.Providers.Kafka.Namespace)
-	kRes.SetLabels(labels)
-
-	kRes.Spec.Replicas = topic.Replicas
-	kRes.Spec.Partitions = topic.Partitions
-	kRes.Spec.Config = topic.Config
+	k.SetName(topicName)
+	k.SetNamespace(s.Env.Spec.Providers.Kafka.Namespace)
+	k.SetLabels(labels)
 
 	newConfig := make(map[string]string)
 
 	// This can be improved from an efficiency PoV
 	// Loop through all key/value pairs in the config
-	for key, value := range kRes.Spec.Config {
-		valList := []string{value}
-		for _, res := range appList.Items {
-			if res.ObjectMeta.Name == nn.Name {
+	replicaValList := []string{}
+	partitionValList := []string{}
+
+	for _, iapp := range appList.Items {
+		if iapp.Spec.EnvName != app.Spec.EnvName {
+			// Only consider apps within this ClowdEnvironment
+			continue
+		}
+		if iapp.Spec.KafkaTopics != nil {
+			for _, itopic := range app.Spec.KafkaTopics {
+				if itopic.TopicName != topic.TopicName {
+					// Only consider a topic that matches the name
+					continue
+				}
+				if itopic.Replicas != nil {
+					replicaValList = append(replicaValList, strconv.Itoa(int(*itopic.Replicas)))
+				}
+				if itopic.Partitions != nil {
+					partitionValList = append(partitionValList, strconv.Itoa(int(*itopic.Partitions)))
+				}
+			}
+		}
+	}
+
+	for key := range topic.Config {
+		valList := []string{}
+		for _, iapp := range appList.Items {
+			if iapp.Spec.EnvName != app.Spec.EnvName {
+				// Only consider apps within this ClowdEnvironment
 				continue
 			}
-			if res.ObjectMeta.Namespace != nn.Namespace {
-				continue
-			}
-			if res.Spec.KafkaTopics != nil {
-				for _, topic := range res.Spec.KafkaTopics {
-					if topic.Config != nil {
-						if val, ok := topic.Config[key]; ok {
+			if iapp.Spec.KafkaTopics != nil {
+				for _, itopic := range app.Spec.KafkaTopics {
+					fmt.Printf("\n%v %v\n", itopic.TopicName, topic.TopicName)
+					if itopic.TopicName != topic.TopicName {
+						// Only consider a topic that matches the name
+						continue
+					}
+					if itopic.Replicas != nil {
+						replicaValList = append(replicaValList, strconv.Itoa(int(*itopic.Replicas)))
+					}
+					if itopic.Partitions != nil {
+						partitionValList = append(partitionValList, strconv.Itoa(int(*itopic.Partitions)))
+					}
+					if itopic.Config != nil {
+						if val, ok := itopic.Config[key]; ok {
 							valList = append(valList, val)
 						}
 					}
@@ -138,10 +168,33 @@ func (s *strimziProvider) CreateTopic(nn types.NamespacedName, topic *strimzi.Ka
 			return errors.New(fmt.Sprintf("no conversion type for %s", key))
 		}
 	}
+	if len(replicaValList) > 0 {
+		maxReplicas, err := utils.IntMax(replicaValList)
+		if err != nil {
+			return errors.New(fmt.Sprintf("could not compute max for %v", replicaValList))
+		}
+		maxReplicaString, err := strconv.Atoi(maxReplicas)
+		if err != nil {
+			return errors.New(fmt.Sprintf("could not convert to string %v", maxReplicas))
+		}
+		k.Spec.Replicas = utils.Int32(maxReplicaString)
+	}
 
-	kRes.Spec.Config = newConfig
+	if len(partitionValList) > 0 {
+		maxPartitions, err := utils.IntMax(partitionValList)
+		if err != nil {
+			return errors.New(fmt.Sprintf("could not compute max for %v", partitionValList))
+		}
+		maxPartitionString, err := strconv.Atoi(maxPartitions)
+		if err != nil {
+			return errors.New(fmt.Sprintf("could not convert to string %v", maxPartitions))
+		}
+		k.Spec.Partitions = utils.Int32(maxPartitionString)
+	}
 
-	if err = update.Apply(s.Ctx, s.Client, &kRes); err != nil {
+	k.Spec.Config = newConfig
+
+	if err = update.Apply(s.Ctx, s.Client, &k); err != nil {
 		return err
 	}
 

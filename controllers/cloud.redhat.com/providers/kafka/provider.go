@@ -14,7 +14,7 @@ import (
 // KafkaProvider is the interface for apps to use to configure kafka topics
 type KafkaProvider interface {
 	p.Configurable
-	CreateTopic(nn types.NamespacedName, topic *strimzi.KafkaTopicSpec) error
+	CreateTopic(nn types.NamespacedName, topic *strimzi.KafkaTopicSpec, app *crd.ClowdApp) error
 }
 
 func GetKafka(c *p.Provider) (KafkaProvider, error) {
@@ -45,7 +45,7 @@ func RunAppProvider(provider p.Provider, c *config.AppConfig, app *crd.ClowdApp)
 	}
 
 	for _, topic := range app.Spec.KafkaTopics {
-		err := kafkaProvider.CreateTopic(nn, &topic)
+		err := kafkaProvider.CreateTopic(nn, &topic, app)
 
 		if err != nil {
 			return errors.Wrap("Failed to init kafka topic", err)

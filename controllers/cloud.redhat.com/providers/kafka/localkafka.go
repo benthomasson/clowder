@@ -3,6 +3,7 @@ package kafka
 import (
 	"fmt"
 
+	crd "cloud.redhat.com/clowder/v2/apis/cloud.redhat.com/v1alpha1"
 	strimzi "cloud.redhat.com/clowder/v2/apis/kafka.strimzi.io/v1beta1"
 	"cloud.redhat.com/clowder/v2/controllers/cloud.redhat.com/config"
 	obj "cloud.redhat.com/clowder/v2/controllers/cloud.redhat.com/object"
@@ -31,7 +32,7 @@ func (k *localKafka) Configure(config *config.AppConfig) {
 	config.Kafka = &k.Config
 }
 
-func (k *localKafka) CreateTopic(nn types.NamespacedName, topic *strimzi.KafkaTopicSpec) error {
+func (k *localKafka) CreateTopic(nn types.NamespacedName, topic *strimzi.KafkaTopicSpec, app *crd.ClowdApp) error {
 	topicName := fmt.Sprintf(
 		"%s-%s-%s", topic.TopicName, k.Env.Name, k.Env.GetClowdNamespace(),
 	)

@@ -25,6 +25,8 @@ func TestAppInterface(t *testing.T) {
 		},
 	}
 
+	app := &crd.ClowdApp{}
+
 	ai, err := NewAppInterface(&pr)
 
 	if err != nil {
@@ -33,7 +35,7 @@ func TestAppInterface(t *testing.T) {
 
 	ai.CreateTopic(types.NamespacedName{}, &strimzi.KafkaTopicSpec{
 		TopicName: topicName,
-	})
+	}, app)
 
 	c := config.AppConfig{}
 	ai.Configure(&c)

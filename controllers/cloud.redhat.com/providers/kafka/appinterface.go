@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	crd "cloud.redhat.com/clowder/v2/apis/cloud.redhat.com/v1alpha1"
 	strimzi "cloud.redhat.com/clowder/v2/apis/kafka.strimzi.io/v1beta1"
 	"cloud.redhat.com/clowder/v2/controllers/cloud.redhat.com/config"
 	"cloud.redhat.com/clowder/v2/controllers/cloud.redhat.com/errors"
@@ -22,7 +23,7 @@ func (a *appInterface) Configure(config *config.AppConfig) {
 	config.Kafka = &a.Config
 }
 
-func (a *appInterface) CreateTopic(nn types.NamespacedName, topic *strimzi.KafkaTopicSpec) error {
+func (a *appInterface) CreateTopic(nn types.NamespacedName, topic *strimzi.KafkaTopicSpec, app *crd.ClowdApp) error {
 	topicName := types.NamespacedName{
 		Namespace: a.Env.Spec.Providers.Kafka.Namespace,
 		Name:      topic.TopicName,
