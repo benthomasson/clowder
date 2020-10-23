@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	crd "cloud.redhat.com/clowder/v2/apis/cloud.redhat.com/v1alpha1"
-	strimzi "cloud.redhat.com/clowder/v2/apis/kafka.strimzi.io/v1beta1"
 	"cloud.redhat.com/clowder/v2/controllers/cloud.redhat.com/config"
 	obj "cloud.redhat.com/clowder/v2/controllers/cloud.redhat.com/object"
 	"cloud.redhat.com/clowder/v2/controllers/cloud.redhat.com/providers"
@@ -14,7 +13,6 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -32,19 +30,20 @@ func (k *localKafka) Configure(config *config.AppConfig) {
 	config.Kafka = &k.Config
 }
 
-func (k *localKafka) CreateTopic(nn types.NamespacedName, topic *strimzi.KafkaTopicSpec, app *crd.ClowdApp) error {
-	topicName := fmt.Sprintf(
-		"%s-%s-%s", topic.TopicName, k.Env.Name, k.Env.GetClowdNamespace(),
-	)
+func (k *localKafka) CreateTopic(app *crd.ClowdApp) error {
+	for _, topic := range app.Spec.KafkaTopics {
+		topicName := fmt.Sprintf(
+			"%s-%s-%s", topic.TopicName, k.Env.Name, k.Env.GetClowdNamespace(),
+		)
 
-	k.Config.Topics = append(
-		k.Config.Topics,
-		config.TopicConfig{
-			Name:          topicName,
-			RequestedName: topic.TopicName,
-		},
-	)
-
+		k.Config.Topics = append(
+			k.Config.Topics,
+			config.TopicConfig{
+				Name:          topicName,
+				RequestedName: topic.TopicName,
+			},
+		)
+	}
 	return nil
 }
 

@@ -7,7 +7,6 @@ import (
 	strimzi "cloud.redhat.com/clowder/v2/apis/kafka.strimzi.io/v1beta1"
 	"cloud.redhat.com/clowder/v2/controllers/cloud.redhat.com/config"
 	p "cloud.redhat.com/clowder/v2/controllers/cloud.redhat.com/providers"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestAppInterface(t *testing.T) {
@@ -25,7 +24,13 @@ func TestAppInterface(t *testing.T) {
 		},
 	}
 
-	app := &crd.ClowdApp{}
+	app := &crd.ClowdApp{
+		Spec: crd.ClowdAppSpec{
+			KafkaTopics: []strimzi.KafkaTopicSpec{{
+				TopicName: topicName,
+			}},
+		},
+	}
 
 	ai, err := NewAppInterface(&pr)
 
@@ -33,9 +38,7 @@ func TestAppInterface(t *testing.T) {
 		t.Error(err)
 	}
 
-	ai.CreateTopic(types.NamespacedName{}, &strimzi.KafkaTopicSpec{
-		TopicName: topicName,
-	}, app)
+	ai.CreateTopic(app)
 
 	c := config.AppConfig{}
 	ai.Configure(&c)
