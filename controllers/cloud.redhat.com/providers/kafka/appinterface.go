@@ -23,7 +23,7 @@ func (a *appInterface) Configure(config *config.AppConfig) {
 	config.Kafka = &a.Config
 }
 
-func (a *appInterface) CreateTopic(app *crd.ClowdApp) error {
+func (a *appInterface) CreateTopics(app *crd.ClowdApp) error {
 	for _, topic := range app.Spec.KafkaTopics {
 		topicName := types.NamespacedName{
 			Namespace: a.Env.Spec.Providers.Kafka.Namespace,

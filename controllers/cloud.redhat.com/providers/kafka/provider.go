@@ -12,7 +12,7 @@ import (
 // KafkaProvider is the interface for apps to use to configure kafka topics
 type KafkaProvider interface {
 	p.Configurable
-	CreateTopic(app *crd.ClowdApp) error
+	CreateTopics(app *crd.ClowdApp) error
 }
 
 func GetKafka(c *p.Provider) (KafkaProvider, error) {
@@ -37,7 +37,7 @@ func RunAppProvider(provider p.Provider, c *config.AppConfig, app *crd.ClowdApp)
 		return errors.Wrap("Failed to init kafka provider", err)
 	}
 
-	err = kafkaProvider.CreateTopic(app)
+	err = kafkaProvider.CreateTopics(app)
 
 	if err != nil {
 		return errors.Wrap("Failed to init kafka topic", err)

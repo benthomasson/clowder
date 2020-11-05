@@ -70,7 +70,7 @@ func NewStrimzi(p *p.Provider) (KafkaProvider, error) {
 	return kafkaProvider, kafkaProvider.configureBrokers()
 }
 
-func (s *strimziProvider) CreateTopic(app *crd.ClowdApp) error {
+func (s *strimziProvider) CreateTopics(app *crd.ClowdApp) error {
 	s.Config.Topics = []config.TopicConfig{}
 
 	nn := types.NamespacedName{

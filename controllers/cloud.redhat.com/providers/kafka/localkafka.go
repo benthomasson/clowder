@@ -30,7 +30,7 @@ func (k *localKafka) Configure(config *config.AppConfig) {
 	config.Kafka = &k.Config
 }
 
-func (k *localKafka) CreateTopic(app *crd.ClowdApp) error {
+func (k *localKafka) CreateTopics(app *crd.ClowdApp) error {
 	for _, topic := range app.Spec.KafkaTopics {
 		topicName := fmt.Sprintf(
 			"%s-%s-%s", topic.TopicName, k.Env.Name, k.Env.GetClowdNamespace(),
